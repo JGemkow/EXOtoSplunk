@@ -29,13 +29,6 @@
                 "description": "Client ID of the Azure AD application registration"
             }
         },
-        "azureADTenantId": {
-            "type": "string",
-            "defaultValue": "[subscription().tenantId]",
-            "metadata": {
-                "description": "Tenant ID for the Azure AD directory where SPO is linked"
-            }
-        },
         "tenantName": {
             "type": "string",
             "metadata": {
@@ -43,7 +36,7 @@
             }
         },
         "messageTraceSplunkToken": {
-            "type": "string",
+            "type": "secureString",
             "metadata": {
                 "description": "Splunk token for the message trace index"
             }
@@ -65,9 +58,18 @@
             "metadata": {
                 "description": "Name of certificate that will be pulled from AKV"
             }
+        },
+        "startDate": {
+            "type": "string",
+            "defaultValue": "[dateTimeAdd(utcNow('u'), 'P1D')]",
+            "metadata": {
+                "description": "Start date (must be in future) for first runbook execution"
+            }
         }
     },
-    "variables": {},
+    "variables": {
+        "truncatedStartDate": "[substring(parameters('startDate'), 0, 10)]"
+    },
     "resources": [
         {
             "type": "Microsoft.Automation/automationAccounts",
@@ -106,7 +108,7 @@
                 "accessPolicies": [
                     {
                         "tenantId": "[subscription().tenantId]",
-                        "objectId": "[reference(resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName')),'2019-08-01', 'full').identity.principalId]",
+                        "objectId": "[reference(resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName')),'2021-06-22', 'full').identity.principalId]",
                         "permissions": {
                             "keys": [],
                             "secrets": [
@@ -135,7 +137,8 @@
                         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
                     ],
                     "properties": {
-                        "value": "[parameters('azureADApplicationId')]"
+                        "value": "[parameters('azureADApplicationId')]",
+                        "contentType": "text/plain"
                     }
                 },
                 {
@@ -146,7 +149,8 @@
                         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
                     ],
                     "properties": {
-                        "value": "[parameters('tenantName')]"
+                        "value": "[parameters('tenantName')]",
+                        "contentType": "text/plain"
                     }
                 },
                 {
@@ -157,7 +161,8 @@
                         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
                     ],
                     "properties": {
-                        "value": "[parameters('splunkHECEndpoint')]"
+                        "value": "[parameters('splunkHECEndpoint')]",
+                        "contentType": "text/plain"
                     }
                 },
                 {
@@ -168,7 +173,8 @@
                         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
                     ],
                     "properties": {
-                        "value": "[parameters('messageTraceSplunkToken')]"
+                        "value": "[parameters('messageTraceSplunkToken')]",
+                        "contentType": "text/plain"
                     }
                 },
                 {
@@ -179,23 +185,11 @@
                         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
                     ],
                     "properties": {
-                        "value": "[parameters('configSplunkToken')]"
+                        "value": "[parameters('configSplunkToken')]",
+                        "contentType": "text/plain"
                     }
                 }
             ]
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobs",
-            "apiVersion": "2019-06-01",
-            "name": "[concat(parameters('automationAccountName'), '/SCH_51abb09f-159e-416f-9eb4-818fb2835722_a8e775e0-04f5-4619-bf0d-d7776a01fc70_637938864000000000')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                }
-            }
         },
         {
             "type": "Microsoft.Automation/automationAccounts/schedules",
@@ -206,8 +200,9 @@
             ],
             "properties": {
                 "description": "Export configuration details daily.",
-                "startTime": "2022-07-25T16:05:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:05:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
+                "interval": 1,
                 "frequency": "Day",
                 "timeZone": "America/Chicago"
             }
@@ -221,7 +216,7 @@
             ],
             "properties": {
                 "description": "Export message traces hourly at XX:00.",
-                "startTime": "2022-07-25T16:00:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:00:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
@@ -237,7 +232,7 @@
             ],
             "properties": {
                 "description": "Export message traces hourly at XX:10.",
-                "startTime": "2022-07-25T16:10:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:10:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
@@ -253,7 +248,7 @@
             ],
             "properties": {
                 "description": "Export message traces hourly at XX:20.",
-                "startTime": "2022-07-25T16:20:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:20:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
@@ -269,7 +264,7 @@
             ],
             "properties": {
                 "description": "Export message traces hourly at XX:30.",
-                "startTime": "2022-07-25T16:30:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:30:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
@@ -284,8 +279,8 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "description": "Export message traces hourly at XX:50.",
-                "startTime": "2022-07-25T16:40:00-05:00",
+                "description": "Export message traces hourly at XX:40.",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:40:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
@@ -301,130 +296,11 @@
             ],
             "properties": {
                 "description": "Export message traces hourly at XX:50.",
-                "startTime": "2022-07-25T16:50:00-05:00",
+                "startTime": "[concat(variables('truncatedStartDate'),'T16:50:00-05:00')]",
                 "expiryTime": "9999-12-31T17:59:00-06:00",
                 "interval": 1,
                 "frequency": "Hour",
                 "timeZone": "America/Chicago"
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/2e819695-2138-4e27-8c75-51be3d563d04')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (10)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (10)"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/47099b47-9194-478a-b2c5-2202f0530c36')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Configuration Details Daily'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "OrganizationConfigExtractor"
-                },
-                "schedule": {
-                    "name": "Export Configuration Details Daily"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/8222a893-c208-4cad-a027-fcf8b440af77')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (20)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (20)"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/aa2ae25c-0100-4cd3-ab35-842148ec3839')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (00)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (00)"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/d5dfb781-46b6-4dcf-9f65-f89eb6ed2d9b')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (50)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (50)"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/d5fee4b8-8139-4a49-9d7a-9dba824a29c8')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (40)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (40)"
-                }
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/fce2f017-03e0-4c5b-93ad-4724ddc3497c')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]",
-                "[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (30)'))]"
-            ],
-            "properties": {
-                "runbook": {
-                    "name": "MessageTrackingLogExtractor"
-                },
-                "schedule": {
-                    "name": "Export Message Traces Hourly (30)"
-                }
             }
         },
         {
@@ -435,7 +311,9 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "contentLink": {}
+                "contentLink": {
+                    "uri": "https://psg-prod-eastus.azureedge.net/packages/exchangeonlinemanagement.2.0.3.nupkg"
+                }
             }
         },
         {
@@ -477,7 +355,7 @@
             ],
             "properties": {
                 "isEncrypted": false,
-                "value": "[parameters('certificateName')]",
+                "value": "[concat('\"', parameters('certificateName'), '\"')]",
                 "description": "Name of certificate in AKV for authentication to EXO"
             }
         },

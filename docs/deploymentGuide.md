@@ -79,7 +79,7 @@ The resource configuration is defined as an ARM template. It will deploy:
 - Two Azure runbooks on the Automation account
 - Related configuration (schedules, variables, etc.) within the Azure Automation account.
 
-You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template.json__ within this repository/package.
+You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-base.json__ within this repository/package.
 
 ## Certificate management
 
@@ -98,7 +98,7 @@ The option to use a prior generated self-signed certificate or a enterprise-issu
 - [Import an existing certificate to Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/certificates/tutorial-import-certificate?tabs=azure-portal)
 - [Generate a certificate in Key Vault](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal#add-a-certificate-to-key-vault). _Note:_ Be sure to download the certificate in __CER__ format afterward. This will be used for the AAD App registration
 
-### Add the certiicate to the Azure AD application registration
+### Add the certificate to the Azure AD application registration
 
 In order to authenticate against the Azure AD application registration, the public-key certificate will need to be uploaded. The instructions to do so are [here](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal#option-1-upload-a-certificate).
 
@@ -112,6 +112,14 @@ To do so in the Azure Portal:
 ## Deploying the runbook code
 
 The runbook resources will be created as empty. The runbook code will need to be added to the resource. The runbook code is stored as PowerShell scripts under the __src__ folder. You can either [edit the runbooks in the Azure Portal](https://docs.microsoft.com/en-us/azure/automation/automation-edit-textual-runbook#edit-a-runbook-with-the-azure-portal) to copy/paste the code into the runbooks from the respective PS1 files, or use [PowerShell](https://docs.microsoft.com/en-us/powershell/module/az.automation/import-azautomationrunbook?view=azps-8.1.0) to import the files against the target resources.
+
+### Deploy the remaining Azure resources into your resource group
+
+The resource configuration is defined as an ARM template. It will deploy:
+
+- Related configuration (schedule associations) within the Azure Automation account.
+
+You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-jobschedules.json__ within this repository/package.
 
 ## Test and validate
 

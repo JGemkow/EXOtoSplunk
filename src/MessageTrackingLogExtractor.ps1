@@ -84,7 +84,7 @@ $sendScript = {
 	Invoke-RestMethod -Method Post -Uri $uri -Body (ConvertTo-Json $body) -Header $header #| Out-Null # URI should be along lines of http://" + $SplunkHost + ":" + $SplunkEventCollectorPort + "/services/collector"
 }
 
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true} # Functionally disable the validation of the server cert by the client as SplunkCommonCA is not trusted by default.
+#[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true} # Functionally disable the validation of the server cert by the client if the cert in Splunk is improperly set up
 for ($i=0; $i -lt $messages.Count; $i++) {
 	Write-Output "Sending message #$($i+1) of $($messages.Count) to Splunk"
 	$m = $messages[$i]
@@ -99,7 +99,7 @@ while ($sendJobs.IsCompleted -contains $false) {
 	Start-Sleep 1
 }
 Write-Output "Finished sending messages to Splunk."
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+#[System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
 
 
 

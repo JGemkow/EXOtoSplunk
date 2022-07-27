@@ -61,7 +61,7 @@ try {
 Write-Output "Gathered organization config. Preparing to send to Splunk."
 
 # Send config to HEC
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true} # Functionally disable the validation of the server cert by the client.
+#[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true} # Functionally disable the validation of the server cert by the client if the cert in Splunk is improperly set up
 Write-Output "Sending config to Splunk"
 $body = @{
 	event =(ConvertTo-Json $orgConfig)
@@ -70,4 +70,4 @@ $body = @{
 $header = @{"Authorization"="Splunk " + $splunkToken}
 Invoke-RestMethod -Method Post -Uri $splunkHECEndpoint -Body (ConvertTo-Json $body) -Header $header | Out-Null # URI should be along lines of http://" + $SplunkHost + ":" + $SplunkEventCollectorPort + "/services/collector"
 Write-Output "Sent organization config to Splunk."
-[System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
+#[System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null

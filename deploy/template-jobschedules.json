@@ -1,0 +1,211 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "automationAccountName": {
+            "defaultValue": "aa-exosplunkautomation",
+            "type": "string",
+            "metadata": {
+                "description": "Name of the Automation Account to be used in Azure"
+            }
+        },
+        "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Region for Azure resources"
+            }
+        },
+        "dailyConfigJobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for Daily jobSchedule association for Config Export job"
+            }
+        },
+        "hourTraceExport00JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:00"
+            }
+        },
+        "hourTraceExport10JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:10"
+            }
+        },
+        "hourTraceExport20JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:20"
+            }
+        },
+        "hourTraceExport30JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:30"
+            }
+        },
+        "hourTraceExport40JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:40"
+            }
+        },
+        "hourTraceExport50JobScheduleGUID": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "GUID for hourly jobSchedule association for Trace Export job at XX:50"
+            }
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Automation/automationAccounts",
+            "apiVersion": "2021-06-22",
+            "name": "[parameters('automationAccountName')]",
+            "location": "[parameters('location')]",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "publicNetworkAccess": true,
+                "disableLocalAuth": false,
+                "sku": {
+                    "name": "Basic"
+                },
+                "encryption": {
+                    "keySource": "Microsoft.Automation",
+                    "identity": {}
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport10JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (10)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (10)"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('dailyConfigJobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Configuration Details Daily'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "OrganizationConfigExtractor"
+                },
+                "schedule": {
+                    "name": "Export Configuration Details Daily"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport20JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (20)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (20)"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport00JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (00)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (00)"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport50JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (50)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (50)"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport40JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (40)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (40)"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Automation/automationAccounts/jobSchedules",
+            "apiVersion": "2020-01-13-preview",
+            "name": "[concat(parameters('automationAccountName'), '/', parameters('hourTraceExport30JobScheduleGUID'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                //"[resourceId('Microsoft.Automation/automationAccounts/schedules', concat(parameters('automationAccountName'), '/Export Message Traces Hourly (30)'))]"
+            ],
+            "properties": {
+                "runbook": {
+                    "name": "MessageTrackingLogExtractor"
+                },
+                "schedule": {
+                    "name": "Export Message Traces Hourly (30)"
+                }
+            }
+        }
+    ]
+}
