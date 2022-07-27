@@ -73,7 +73,7 @@
             "type": "Microsoft.Automation/automationAccounts",
             "apiVersion": "2021-06-22",
             "name": "[parameters('automationAccountName')]",
-            "location": "southcentralus",
+            "location": "[parameters('location')]",
             "identity": {
                 "type": "SystemAssigned"
             },
@@ -93,7 +93,7 @@
             "type": "Microsoft.KeyVault/vaults",
             "apiVersion": "2021-11-01-preview",
             "name": "[parameters('keyVaultName')]",
-            "location": "southcentralus",
+            "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
@@ -207,8 +207,8 @@
             "properties": {
                 "description": "Export configuration details daily.",
                 "startTime": "2022-07-25T16:05:00-05:00",
-                "expiryTime": "2022-07-25T16:05:00-05:00",
-                "frequency": "OneTime",
+                "expiryTime": "9999-12-31T17:59:00-06:00",
+                "frequency": "Day",
                 "timeZone": "America/Chicago"
             }
         },
@@ -442,7 +442,7 @@
             "type": "Microsoft.Automation/automationAccounts/runbooks",
             "apiVersion": "2019-06-01",
             "name": "[concat(parameters('automationAccountName'), '/MessageTrackingLogExtractor')]",
-            "location": "southcentralus",
+            "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
@@ -457,7 +457,7 @@
             "type": "Microsoft.Automation/automationAccounts/runbooks",
             "apiVersion": "2019-06-01",
             "name": "[concat(parameters('automationAccountName'), '/OrganizationConfigExtractor')]",
-            "location": "southcentralus",
+            "location": "[parameters('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
