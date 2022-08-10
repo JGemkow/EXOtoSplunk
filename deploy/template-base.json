@@ -407,7 +407,7 @@
             ],
             "properties": {
                 "isEncrypted": false,
-                "value": "\"kv-exosplunkautomation\"",
+                "value": "[parameters('keyVaultName')]",
                 "description": "Name of Key Vault"
             }
         },
