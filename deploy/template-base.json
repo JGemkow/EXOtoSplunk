@@ -2,18 +2,106 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "keyVaultName": {
-            "defaultValue": "kv-exosplunkautomation",
+        "instanceName": {
             "type": "string",
+            "defaultValue": "exosplunkautomation",
+            "metadata": {
+                "description": "Name used to uniquely identify the instance"
+            }
+        },
+        "keyVaultName": {
+            "defaultValue": "[concat('kv-', parameters('instanceName'))]",
+            "type": "string",
+            "maxLength": 24,
             "metadata": {
                 "description": "Name of the Key Vault to be used in Azure"
             }
         },
-        "automationAccountName": {
-            "defaultValue": "aa-exosplunkautomation",
+        "storageAccountName": {
+            "type": "string",
+            "defaultValue": "[toLower(replace(replace(concat('sa', parameters('instanceName')), '-', ''), '_', ''))]",
+            "minLength": 3,
+            "maxLength": 24,
+            "metadata": {
+                "description": "Storage account to be used for the Azure Function"
+            }
+        },
+        "functionAppName": {
+            "defaultValue": "[concat('func-', parameters('instanceName'))]",
             "type": "string",
             "metadata": {
-                "description": "Name of the Automation Account to be used in Azure"
+                "description": "Name of the Function App to be used in Azure"
+            }
+        },
+        "appServicePlanName": {
+            "type": "string",
+            "defaultValue": "[concat('plan-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of Azure App Service Plan to be used for function, QnA maker, and LUIS"
+            }
+        },
+        "appServicePlanSKU": {
+            "type": "string",
+            "defaultValue": "S1",
+            "metadata": {
+                "description": "SKU for the App Service Plan. Standard or Premium plan required for VNet integration.",
+                "allowedValues": [ "S1", "S2", "S3", "P1V3", "P2V3", "P3V3" ]
+            }
+        },
+        "virtualNetworkName": {
+            "type": "string",
+            "defaultValue": "[concat('vnet-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of Virtual Network to be used for communication between services "
+            }
+        },
+        "defaultSubnetName": {
+            "type": "string",
+            "defaultValue": "sn-default",
+            "metadata": {
+                "description": "Name of subnet for Key Vault and Storage Account"
+            }
+        },
+        "appServiceSubnetName": {
+            "type": "string",
+            "defaultValue": "sn-appservice",
+            "metadata": {
+                "description": "Name of subnet for Function App (backed by App Service)"
+            }
+        },
+        "privateEndpointStorageBlobName": {
+            "type": "string",
+            "defaultValue": "[concat('pe-sablob-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of private endpoint for storage account's blob service"
+            }
+        },
+        "privateEndpointStorageTableName": {
+            "type": "string",
+            "defaultValue": "[concat('pe-satable-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of private endpoint for storage account's table service"
+            }
+        },
+        "privateEndpointStorageQueueName": {
+            "type": "string",
+            "defaultValue": "[concat('pe-saqueue-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of private endpoint for storage account's queue service"
+            }
+        },
+        "privateEndpointStorageFileName": {
+            "type": "string",
+            "defaultValue": "[concat('pe-safile-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of private endpoint for storage account's file service"
+            }
+        },
+        "privateEndpointKeyVaultName": {
+            "type": "string",
+            "defaultValue": "[concat('pe-kv-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name of private endpoint for Key Vault"
             }
         },
         "location": {
@@ -58,46 +146,151 @@
             "metadata": {
                 "description": "Name of certificate that will be pulled from AKV"
             }
-        },
-        "startDate": {
-            "type": "string",
-            "defaultValue": "[dateTimeAdd(utcNow('u'), 'P1D')]",
-            "metadata": {
-                "description": "Start date (must be in future) for first runbook execution"
-            }
         }
     },
     "variables": {
-        "truncatedStartDate": "[substring(parameters('startDate'), 0, 10)]"
+        "storageEndPointSuffix": "[environment().suffixes.storage]",
+        "blobStoragePrivateEndpointDNS": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+        "fileStoragePrivateEndpointDNS": "[format('privatelink.file.{0}', environment().suffixes.storage)]",
+        "queueStoragePrivateEndpointDNS": "[format('privatelink.queue.{0}', environment().suffixes.storage)]",
+        "tableStoragePrivateEndpointDNS": "[format('privatelink.table.{0}', environment().suffixes.storage)]",
+        "keyVaultPrivateEndpointDNS": "[if(contains(parameters('location'), 'usgov'), 'privatelink.vaultcore.usgovcloudapi.net', 'privatelink.vaultcore.azure.net')]"
     },
     "resources": [
         {
-            "type": "Microsoft.Automation/automationAccounts",
-            "apiVersion": "2021-06-22",
-            "name": "[parameters('automationAccountName')]",
+            "apiVersion": "2018-02-01",
+            "name": "[parameters('appServicePlanName')]",
+            "type": "Microsoft.Web/serverfarms",
             "location": "[parameters('location')]",
-            "identity": {
-                "type": "SystemAssigned"
+            "kind": "app",
+            "properties": {
+                "name": "[parameters('appServicePlanName')]"
+            },
+            "sku": {
+                "name": "[parameters('appServicePlanSKU')]"
+            }
+        },
+        {
+            "name": "[parameters('storageAccountName')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "tags": {
+                "displayName": "[parameters('storageAccountName')]"
+            },
+            "location": "[parameters('location')]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
             },
             "properties": {
-                "publicNetworkAccess": true,
-                "disableLocalAuth": false,
-                "sku": {
-                    "name": "Basic"
-                },
-                "encryption": {
-                    "keySource": "Microsoft.Automation",
-                    "identity": {}
+                "allowBlobPublicAccess": false,
+                "networkAcls": {
+                    "resourceAccessRules": [],
+                    "bypass": "None",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Deny"
                 }
             }
         },
         {
+            "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+            "apiVersion": "2021-04-01",
+            "name": "[format('{0}/default/{1}', parameters('storageAccountName'), parameters('functionAppName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ]
+        },
+        {
+            "name": "[parameters('functionAppName')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[parameters('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+            ],
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "siteConfig": {
+                    "AlwaysOn": true,
+                    "powerShellVersion": "~7",
+                    "ftpsState": "Disabled",
+                    "vnetRouteAllEnabled": true,
+                    "vnetName": ""
+                },
+                "clientCertEnabled": true,
+                "clientCertMode": "Optional",
+                "httpsOnly": true
+            },
+            "resources": [
+                {
+                    "type": "networkConfig",
+                    "name": "VirtualNetwork",
+                    "apiVersion": "2016-03-01",
+                    "properties": {
+                        "subnetResourceId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('appServiceSubnetName'))]",
+                        "swiftSupported": true
+                    },
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', parameters('functionAppName'))]"
+                    ]
+                }
+            ]
+        },
+        {
+            "apiVersion": "2018-11-01",
+            "name": "[concat(parameters('functionAppName'), '/appsettings')]",
+            "type": "Microsoft.Web/sites/config",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/Sites', parameters('functionAppName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')]",
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                "[resourceId('Microsoft.Web/sites/networkConfig', parameters('functionAppName'), 'VirtualNetwork')]",
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', variables('keyVaultPrivateEndpointDNS'), concat(variables('keyVaultPrivateEndpointDNS'), '-link'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('keyVaultPrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointKeyVaultName'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', parameters('privateEndpointKeyVaultName'), 'default')]",
+                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', variables('fileStoragePrivateEndpointDNS'), concat(variables('fileStoragePrivateEndpointDNS'), '-link'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageFileName'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', parameters('privateEndpointStorageFileName'), 'default')]"
+            ],
+            "properties": {
+                "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')).secretUri, ')')]",
+                "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')).secretUri, ')')]",
+                "WEBSITE_CONTENTSHARE": "[toLower(parameters('functionAppName'))]",
+                "WEBSITE_CONTENTOVERVNET": "1", // Necessary to allow storage connection from Function App
+                "WEBSITE_VNET_ROUTE_ALL": "1",
+                "FUNCTIONS_EXTENSION_VERSION": "~3",
+                "FUNCTIONS_WORKER_RUNTIME": "powershell",
+                "CertificateName": "[parameters('certificateName')]",
+                "ClientIdSecretName": "ClientId",
+                "ExecutionInterval": "10",
+                "EXOMessageTracePageSize": "1000",
+                "KeyVaultName": "[parameters('keyVaultName')]",
+                "MaxNumberSplunkSendThreads": "1",
+                "SplunkHECEndpointSecretName": "SplunkHECEndpoint",
+                "SplunkMessageTraceSplunkTokenSecretName": "MessageTraceSplunkToken",
+                "SplunkEXOConfigTokenSecretName": "ConfigSplunkToken",
+                "TenantNameSecretName": "TenantName",
+                "WEBSITE_LOAD_CERTIFICATES": "*"
+            }
+        },
+        {
             "type": "Microsoft.KeyVault/vaults",
-            "apiVersion": "2021-11-01-preview",
+            "apiVersion": "2016-10-01",
             "name": "[parameters('keyVaultName')]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Web/Sites', parameters('functionAppName'))]"
             ],
             "properties": {
                 "sku": {
@@ -108,7 +301,7 @@
                 "accessPolicies": [
                     {
                         "tenantId": "[subscription().tenantId]",
-                        "objectId": "[reference(resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName')),'2021-06-22', 'full').identity.principalId]",
+                        "objectId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')),'2019-08-01', 'full').identity.principalId]",
                         "permissions": {
                             "keys": [],
                             "secrets": [
@@ -120,13 +313,18 @@
                         }
                     }
                 ],
+                "networkAcls": {
+                    "bypass": "None",
+                    "defaultAction": "Deny",
+                    "ipRules": [],
+                    "virtualNetworkRules": []
+                },
                 "enabledForDeployment": false,
                 "enabledForDiskEncryption": false,
                 "enabledForTemplateDeployment": false,
                 "enableSoftDelete": true,
                 "softDeleteRetentionInDays": 90,
-                "enablePurgeProtection": true,
-                "publicNetworkAccess": "Enabled"
+                "enablePurgeProtection": true
             },
             "resources": [
                 {
@@ -188,292 +386,445 @@
                         "value": "[parameters('configSplunkToken')]",
                         "contentType": "text/plain"
                     }
+                },
+                {
+                    "type": "secrets",
+                    "name": "StorageAccountConnectionString",
+                    "apiVersion": "2016-10-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                    ],
+                    "properties": {
+                        "value": "[Concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, ';EndpointSuffix=',variables('storageEndPointSuffix'))]"
+                    }
                 }
             ]
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Configuration Details Daily')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('virtualNetworkName')]",
+            "location": "[parameters('location')]",
             "properties": {
-                "description": "Export configuration details daily.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:05:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Day",
-                "timeZone": "America/Chicago"
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.80.0.0/28",
+                        "10.80.16.0/28"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "[parameters('appServiceSubnetName')]",
+                        "properties": {
+                            "addressPrefix": "10.80.16.0/28",
+                            "serviceEndpoints": [],
+                            "delegations": [
+                                {
+                                    "name": "Microsoft.Web.serverFarms",
+                                    "properties": {
+                                        "serviceName": "Microsoft.Web/serverFarms"
+                                    }
+                                }
+                            ],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    },
+                    {
+                        "name": "[parameters('defaultSubnetName')]",
+                        "properties": {
+                            "addressPrefix": "10.80.0.0/28",
+                            "serviceEndpoints": [],
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (00)')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[parameters('privateEndpointStorageBlobName')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
             "properties": {
-                "description": "Export message traces hourly at XX:00.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:00:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('defaultSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointStorageBlobName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                            "groupIds": [
+                                "blob"
+                            ]
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (10)')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('blobStoragePrivateEndpointDNS')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
-            "properties": {
-                "description": "Export message traces hourly at XX:10.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:10:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
-            }
+            "properties": ""
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (20)')]",
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2020-01-01",
+            "name": "[concat(variables('blobStoragePrivateEndpointDNS'), '/', variables('blobStoragePrivateEndpointDNS'), '-link')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('blobStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
             "properties": {
-                "description": "Export message traces hourly at XX:20.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:20:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (30)')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
-            "properties": {
-                "description": "Export message traces hourly at XX:30.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:30:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (40)')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
-            "properties": {
-                "description": "Export message traces hourly at XX:40.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:40:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/schedules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/Export Message Traces Hourly (50)')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
-            "properties": {
-                "description": "Export message traces hourly at XX:50.",
-                "startTime": "[concat(variables('truncatedStartDate'),'T16:50:00-05:00')]",
-                "expiryTime": "9999-12-31T17:59:00-06:00",
-                "interval": 1,
-                "frequency": "Hour",
-                "timeZone": "America/Chicago"
-            }
-        },
-        {
-            "type": "Microsoft.Automation/automationAccounts/modules",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/ExchangeOnlineManagement')]",
-            "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
-            ],
-            "properties": {
-                "contentLink": {
-                    "uri": "https://psg-prod-eastus.azureedge.net/packages/exchangeonlinemanagement.2.0.3.nupkg"
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
                 }
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/runbooks",
-            "apiVersion": "2019-06-01",
-            "name": "[concat(parameters('automationAccountName'), '/MessageTrackingLogExtractor')]",
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('privateEndpointStorageBlobName'), '/default')]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('blobStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageBlobName'))]"
             ],
             "properties": {
-                "runbookType": "PowerShell",
-                "logVerbose": false,
-                "logProgress": false,
-                "logActivityTrace": 0
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('blobStoragePrivateEndpointDNS'))]"
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/runbooks",
-            "apiVersion": "2019-06-01",
-            "name": "[concat(parameters('automationAccountName'), '/OrganizationConfigExtractor')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[parameters('privateEndpointStorageFileName')]",
             "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
             "properties": {
-                "runbookType": "PowerShell",
-                "logVerbose": false,
-                "logProgress": false,
-                "logActivityTrace": 0
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('defaultSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointStorageFileName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                            "groupIds": [
+                                "file"
+                            ]
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/CertificateName')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('fileStoragePrivateEndpointDNS')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": ""
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2020-01-01",
+            "name": "[concat(variables('fileStoragePrivateEndpointDNS'), '/', variables('fileStoragePrivateEndpointDNS'), '-link')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "[concat('\"', parameters('certificateName'), '\"')]",
-                "description": "Name of certificate in AKV for authentication to EXO"
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+                }
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/ClientIdSecretName')]",
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('privateEndpointStorageFileName'), '/default')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageFileName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "\"ClientId\"",
-                "description": "Name of secret in AKV containing ClientId for AAD auth to EXO"
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]"
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/ExecutionInterval')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[parameters('privateEndpointStorageTableName')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "10",
-                "description": "Execution interval in minutes"
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('defaultSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointStorageTableName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                            "groupIds": [
+                                "table"
+                            ]
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/EXOMessageTracePageSize')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('tableStoragePrivateEndpointDNS')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": ""
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2020-01-01",
+            "name": "[concat(variables('tableStoragePrivateEndpointDNS'), '/', variables('tableStoragePrivateEndpointDNS'), '-link')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('tableStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "1000",
-                "description": "Size of pages to pull from EXO for message traces"
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+                }
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/KeyVaultName')]",
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('privateEndpointStorageTableName'), '/default')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('tableStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageTableName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "[concat('\"', parameters('keyVaultName'),'\"')]",
-                "description": "Name of Key Vault"
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('tableStoragePrivateEndpointDNS'))]"
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/MaxNumberSplunkSendThreads')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[parameters('privateEndpointStorageQueueName')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "1",
-                "description": "Maximum number of threads to use for sending REST calls to Splunk's HEC"
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('defaultSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointStorageQueueName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                            "groupIds": [
+                                "queue"
+                            ]
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/SplunkHECEndpointSecretName')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('queueStoragePrivateEndpointDNS')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": ""
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2020-01-01",
+            "name": "[concat(variables('queueStoragePrivateEndpointDNS'), '/', variables('queueStoragePrivateEndpointDNS'), '-link')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('queueStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "\"SplunkHECEndpoint\"",
-                "description": "Name of secret in AKV containing Splunk HEC Endpoint"
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+                }
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/SplunkMessageTraceSplunkTokenSecretName')]",
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('privateEndpointStorageQueueName'), '/default')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('queueStoragePrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageQueueName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "\"MessageTraceSplunkToken\"",
-                "description": "Name of AKV secret containing Splunk Token for Message Trace"
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('queueStoragePrivateEndpointDNS'))]"
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/SplunkEXOConfigTokenSecretName')]",
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[parameters('privateEndpointKeyVaultName')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "\"ConfigSplunkToken\"",
-                "description": "Name of secret in AKV representing Splunk token"
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('defaultSubnetName'))]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpointKeyVaultName')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                            "groupIds": [
+                                "vault"
+                            ]
+                        }
+                    }
+                ]
             }
         },
         {
-            "type": "Microsoft.Automation/automationAccounts/variables",
-            "apiVersion": "2020-01-13-preview",
-            "name": "[concat(parameters('automationAccountName'), '/TenantNameSecretName')]",
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2020-01-01",
+            "name": "[variables('keyVaultPrivateEndpointDNS')]",
+            "location": "global",
             "dependsOn": [
-                "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+            ],
+            "properties": ""
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2020-01-01",
+            "name": "[concat(variables('keyVaultPrivateEndpointDNS'), '/', variables('keyVaultPrivateEndpointDNS'), '-link')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('keyVaultPrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
             ],
             "properties": {
-                "isEncrypted": true,
-                "value": "\"TenantName\"",
-                "description": "Name of secret in AKV containing tenant name for authentication to EXO"
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('privateEndpointKeyVaultName'), '/default')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', variables('keyVaultPrivateEndpointDNS'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointKeyVaultName'))]"
+            ],
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "config1",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', variables('keyVaultPrivateEndpointDNS'))]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/config",
+            "apiVersion": "2021-02-01",
+            "name": "[concat(parameters('functionAppName'), '/web')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            ],
+            "properties": {
+                "ipSecurityRestrictions": [
+                    {
+                        "ipAddress": "Any",
+                        "action": "Deny",
+                        "priority": 2147483647,
+                        "name": "Deny all",
+                        "description": "Deny all access"
+                    }
+                ],
+                "scmIpSecurityRestrictionsUseMain": true
             }
         }
     ]
