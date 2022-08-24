@@ -42,7 +42,7 @@
             }
         },
         "configSplunkToken": {
-            "type": "string",
+            "type": "secureString",
             "metadata": {
                 "description": "Splunk token for the organization config index"
             }
@@ -354,7 +354,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "[concat('\"', parameters('certificateName'), '\"')]",
                 "description": "Name of certificate in AKV for authentication to EXO"
             }
@@ -367,7 +367,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "\"ClientId\"",
                 "description": "Name of secret in AKV containing ClientId for AAD auth to EXO"
             }
@@ -380,7 +380,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "10",
                 "description": "Execution interval in minutes"
             }
@@ -393,7 +393,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "1000",
                 "description": "Size of pages to pull from EXO for message traces"
             }
@@ -406,8 +406,8 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
-                "value": "[parameters('keyVaultName')]",
+                "isEncrypted": true,
+                "value": "[concat('\"', parameters('keyVaultName'),'\"')]",
                 "description": "Name of Key Vault"
             }
         },
@@ -419,7 +419,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "1",
                 "description": "Maximum number of threads to use for sending REST calls to Splunk's HEC"
             }
@@ -432,7 +432,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "\"SplunkHECEndpoint\"",
                 "description": "Name of secret in AKV containing Splunk HEC Endpoint"
             }
@@ -445,7 +445,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "\"MessageTraceSplunkToken\"",
                 "description": "Name of AKV secret containing Splunk Token for Message Trace"
             }
@@ -458,7 +458,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "\"ConfigSplunkToken\"",
                 "description": "Name of secret in AKV representing Splunk token"
             }
@@ -471,7 +471,7 @@
                 "[resourceId('Microsoft.Automation/automationAccounts', parameters('automationAccountName'))]"
             ],
             "properties": {
-                "isEncrypted": false,
+                "isEncrypted": true,
                 "value": "\"TenantName\"",
                 "description": "Name of secret in AKV containing tenant name for authentication to EXO"
             }
