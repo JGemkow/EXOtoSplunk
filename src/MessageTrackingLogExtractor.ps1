@@ -55,8 +55,11 @@ Write-Output "Starting to gather EXO Message Traces, page-by-page"
 $messages = @()
 try {
 	$pageNumber = 1
+	$currentDateTime = Get-Date
+	$endDate = Get-Date -Date $currentDateTime.Date -Hour $currentDateTime.Hour -Minute $currentDateTime.Minute -Second 0 -Millisecond 0
+	$startDate = ($endDate).AddMinutes(($executionInterval * -1))
 	do {
-		$page = Get-MessageTrace -StartDate (Get-Date).AddMinutes(($executionInterval * -1)) -EndDate (Get-Date) -PageSize $exoMessageTracePageSize -Page $pageNumber
+		$page = Get-MessageTrace -StartDate $startDate -EndDate $endDate -PageSize $exoMessageTracePageSize -Page $pageNumber
 		$pageNumber += 1 # Increment page number
 		$messages += $page
 	} while ($null -ne $page)
