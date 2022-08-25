@@ -13,9 +13,9 @@ $keyVaultName = $env:KeyVaultName
 $splunkHECEndpointSecretName = $env:SplunkHECEndpointSecretName
 $splunkTokenSecretName = $env:SplunkMessageTraceSplunkTokenSecretName
 $tenantNameSecretName = $env:TenantNameSecretName
-$executionInterval = $env:ExecutionInterval
-$maxNumberSplunkSendThreads = $env:MaxNumberSplunkSendThreads
-$exoMessageTracePageSize = $env:EXOMessageTracePageSize
+$executionInterval = $env:ExecutionInterval -as [int]
+$maxNumberSplunkSendThreads = $env:MaxNumberSplunkSendThreads -as [int]
+$exoMessageTracePageSize = $env:EXOMessageTracePageSize -as [int]
 
 # Retrive information from Key Vault
 try {
@@ -100,4 +100,4 @@ while ($sendJobs.IsCompleted -contains $false) {
 }
 Write-Output "Finished sending messages to Splunk."
 #[System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null
-
+#>
