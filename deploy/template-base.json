@@ -146,6 +146,12 @@
             "metadata": {
                 "description": "Name of certificate that will be pulled from AKV"
             }
+        },
+        "userObjectId": {
+            "type": "string",
+            "metadata": {
+                "description": "AAD Object Id of user to add for Key Vault permissions",
+            }
         }
     },
     "variables": {
@@ -309,6 +315,47 @@
                             ],
                             "certificates": [
                                 "Get"
+                            ]
+                        }
+                    },
+                    {
+                        "tenantId": "[subscription().tenantId]",
+                        "objectId": "[parameters('userObjectId')]",
+                        "permissions": {
+                            "keys": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "secrets": [
+                                "Get",
+                                "List",
+                                "Set",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "ManageContacts",
+                                "ManageIssuers",
+                                "GetIssuers",
+                                "ListIssuers",
+                                "SetIssuers",
+                                "DeleteIssuers"
                             ]
                         }
                     }
