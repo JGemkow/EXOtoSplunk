@@ -123,24 +123,6 @@
                 "description": "Primary Tenant Name for the Exchange Online tenant"
             }
         },
-        "messageTraceSplunkToken": {
-            "type": "secureString",
-            "metadata": {
-                "description": "Splunk token for the message trace index"
-            }
-        },
-        "configSplunkToken": {
-            "type": "secureString",
-            "metadata": {
-                "description": "Splunk token for the organization config index"
-            }
-        },
-        "splunkHECEndpoint": {
-            "type": "string",
-            "metadata": {
-                "description": "URI endpoint for Splunk HEC"
-            }
-        },
         "certificateName": {
             "type": "string",
             "metadata": {
@@ -311,9 +293,6 @@
                 "EXOMessageTracePageSize": "1000",
                 "KeyVaultName": "[parameters('keyVaultName')]",
                 "MaxNumberSplunkSendThreads": "1",
-                "SplunkHECEndpointSecretName": "SplunkHECEndpoint",
-                "SplunkMessageTraceSplunkTokenSecretName": "MessageTraceSplunkToken",
-                "SplunkEXOConfigTokenSecretName": "ConfigSplunkToken",
                 "TenantNameSecretName": "TenantName",
                 "WEBSITE_LOAD_CERTIFICATES": "*",
                 "OrgConfigExportsContainerName": "[variables('orgConfigExportsContainerName')]",
@@ -425,42 +404,6 @@
                     ],
                     "properties": {
                         "value": "[parameters('tenantName')]",
-                        "contentType": "text/plain"
-                    }
-                },
-                {
-                    "type": "secrets",
-                    "name": "SplunkHECEndpoint",
-                    "apiVersion": "2016-10-01",
-                    "dependsOn": [
-                        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
-                    ],
-                    "properties": {
-                        "value": "[parameters('splunkHECEndpoint')]",
-                        "contentType": "text/plain"
-                    }
-                },
-                {
-                    "type": "secrets",
-                    "name": "MessageTraceSplunkToken",
-                    "apiVersion": "2016-10-01",
-                    "dependsOn": [
-                        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
-                    ],
-                    "properties": {
-                        "value": "[parameters('messageTraceSplunkToken')]",
-                        "contentType": "text/plain"
-                    }
-                },
-                {
-                    "type": "secrets",
-                    "name": "ConfigSplunkToken",
-                    "apiVersion": "2016-10-01",
-                    "dependsOn": [
-                        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
-                    ],
-                    "properties": {
-                        "value": "[parameters('configSplunkToken')]",
                         "contentType": "text/plain"
                     }
                 },
