@@ -292,7 +292,6 @@
                 "ExecutionInterval": "10",
                 "EXOMessageTracePageSize": "1000",
                 "KeyVaultName": "[parameters('keyVaultName')]",
-                "MaxNumberSplunkSendThreads": "1",
                 "TenantNameSecretName": "TenantName",
                 "WEBSITE_LOAD_CERTIFICATES": "*",
                 "OrgConfigExportsContainerName": "[variables('orgConfigExportsContainerName')]",
