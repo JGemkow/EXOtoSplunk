@@ -160,7 +160,9 @@
         "fileStoragePrivateEndpointDNS": "[format('privatelink.file.{0}', environment().suffixes.storage)]",
         "queueStoragePrivateEndpointDNS": "[format('privatelink.queue.{0}', environment().suffixes.storage)]",
         "tableStoragePrivateEndpointDNS": "[format('privatelink.table.{0}', environment().suffixes.storage)]",
-        "keyVaultPrivateEndpointDNS": "[if(contains(parameters('location'), 'usgov'), 'privatelink.vaultcore.usgovcloudapi.net', 'privatelink.vaultcore.azure.net')]"
+        "keyVaultPrivateEndpointDNS": "[if(contains(parameters('location'), 'usgov'), 'privatelink.vaultcore.usgovcloudapi.net', 'privatelink.vaultcore.azure.net')]",
+        "orgConfigExportsContainerName": "org-config-exports",
+        "messageTrackingExportsContainerName": "message-tracking-exports"
     },
     "resources": [
         {
@@ -313,7 +315,9 @@
                 "SplunkMessageTraceSplunkTokenSecretName": "MessageTraceSplunkToken",
                 "SplunkEXOConfigTokenSecretName": "ConfigSplunkToken",
                 "TenantNameSecretName": "TenantName",
-                "WEBSITE_LOAD_CERTIFICATES": "*"
+                "WEBSITE_LOAD_CERTIFICATES": "*",
+                "OrgConfigExportsContainerName": "[variables('orgConfigExportsContainerName')]",
+                "MessageTrackingExportsContainerName": "[variables('messageTrackingExportsContainerName')]"
             }
         },
         {
@@ -898,6 +902,61 @@
                     }
                 ],
                 "scmIpSecurityRestrictionsUseMain": true
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2021-09-01",
+            "name": "[concat(parameters('storageAccountName'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                },
+                "deleteRetentionPolicy": {
+                    "allowPermanentDelete": false,
+                    "enabled": false
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2021-09-01",
+            "name": "[concat(parameters('storageAccountName'), '/default/', variables('messageTrackingExportsContainerName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "immutableStorageWithVersioning": {
+                    "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2021-09-01",
+            "name": "[concat(parameters('storageAccountName'), '/default/', variables('orgConfigExportsContainerName'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "immutableStorageWithVersioning": {
+                    "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
             }
         }
     ]
