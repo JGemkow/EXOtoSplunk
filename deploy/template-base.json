@@ -251,6 +251,32 @@
             ]
         },
         {
+            "type": "Microsoft.Web/sites/functions",
+            "apiVersion": "2022-03-01",
+            "name": "[concat(parameters('functionAppName'), '/MessageTrackingLogExtractor')]",
+            "location": "South Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            ],
+            "properties": {
+                "language": "powershell",
+                "isDisabled": true
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/functions",
+            "apiVersion": "2022-03-01",
+            "name": "[concat(parameters('functionAppName'), '/OrganizationConfigExtractor')]",
+            "location": "South Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            ],
+            "properties": {
+                "language": "powershell",
+                "isDisabled": false
+            }
+        },
+        {
             "apiVersion": "2018-11-01",
             "name": "[concat(parameters('functionAppName'), '/appsettings')]",
             "type": "Microsoft.Web/sites/config",
