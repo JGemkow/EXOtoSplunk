@@ -164,7 +164,9 @@
         "tableStoragePrivateEndpointDNS": "[format('privatelink.table.{0}', environment().suffixes.storage)]",
         "keyVaultPrivateEndpointDNS": "[if(contains(parameters('location'), 'usgov'), 'privatelink.vaultcore.usgovcloudapi.net', 'privatelink.vaultcore.azure.net')]",
         "orgConfigExportsContainerName": "org-config-exports",
-        "messageTrackingExportsContainerName": "message-tracking-exports"
+        "messageTrackingExportsContainerName": "message-tracking-exports",
+        "appInsightsRetentionDays": 90,
+        "storageBlobRetentionDays": 7
     },
     "resources": [
         {
@@ -177,7 +179,7 @@
                 "ApplicationId": "[parameters('appInsightsName')]",
                 "Application_Type": "web",
                 "Flow_Type": "Redfield",
-                "RetentionInDays": 90
+                "RetentionInDays": "[variables('appInsightsRetentionDays')]"
             }
         },
         {
@@ -893,7 +895,7 @@
             ],
             "properties": {
                 "ipSecurityRestrictions": [
-                   {
+                    {
                         "ipAddress": "[parameters('deploymentEggressIPAddress')]",
                         "action": "Allow",
                         "tag": "Default",
@@ -965,6 +967,43 @@
                 "defaultEncryptionScope": "$account-encryption-key",
                 "denyEncryptionScopeOverride": false,
                 "publicAccess": "None"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+            "apiVersion": "2019-04-01",
+            "name": "default",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            ],
+            "properties": {
+                "policy": {
+                    "rules": [
+                        {
+                            "definition": {
+                                "actions": {
+                                    "baseBlob": {
+                                        "delete": {
+                                            "daysAfterModificationGreaterThan": "[variables('storageBlobRetentionDays')]"
+                                        }
+                                    }
+                                },
+                                "filters": {
+                                    "blobTypes": [
+                                        "blockBlob"
+                                    ],
+                                    "prefixMatch": [
+                                        "org-config-exports",
+                                        "message-tracking-exports"
+                                    ]
+                                }
+                            },
+                            "enabled": true,
+                            "name": "[concat('Delete exports after ', variables('storageBlobRetentionDays'), ' days')]",
+                            "type": "Lifecycle"
+                        }
+                    ]
+                }
             }
         }
     ]

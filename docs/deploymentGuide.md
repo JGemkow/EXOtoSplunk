@@ -130,4 +130,6 @@ The Azure Function resources will be created as empty. The function code will ne
 
 ## Test and validate
 
-The functions are now deployed and configured. Monitor the execution of the functions on the schedules and ensure data is flowing to Azure Storage for consumption by Splunk.
+The functions are now deployed and configured. Monitor the execution of the functions on the schedules and ensure data is flowing to Azure Storage for consumption by Splunk. 
+
+__Note:__ By default, a lifecycle policy is put in place on the Storage Account to delete the JSON exports after 7 days. This is to help manage sprawl of exports and minimize costs. Additionally, Application Insights log data is only retained by default for 90 days. These are configurable in the ARM template variables or in the respective resources in the Azure Portal.
