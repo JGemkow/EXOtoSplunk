@@ -26,7 +26,7 @@ try {
 	$cert = Get-AzKeyVaultCertificate -VaultName $keyVaultName -Name $certificateName
 	$certValue = Get-AzKeyVaultSecret -VaultName $keyVaultName -Name $cert.Name -AsPlainText
 
-	# Obtain client ID, tenant name from Key Vault
+	# Obtain client ID, tenant name, Splunk Host Name, and Splunk Token from Key Vault
 	$clientId = Get-AzKeyVaultSecret -VaultName $keyVaultName -Name $clientIdSecretName -AsPlainText
 	$tenantName = Get-AzKeyVaultSecret -VaultName $keyVaultName -Name $tenantNameSecretName -AsPlainText
 	

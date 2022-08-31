@@ -80,7 +80,6 @@ The resource configuration is defined as an ARM template. It will deploy:
 
 - An Azure App service plan (minimum S1 SKU is required for VNet integration)
 - An Azure Function app
-  - Includes two functions (without code)
 - An Azure Key Vault
 - An Azure Storage Account
   - Including containers for blobs

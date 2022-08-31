@@ -139,7 +139,7 @@
         "userObjectId": {
             "type": "string",
             "metadata": {
-                "description": "AAD Object Id of user to add for Key Vault permissions",
+                "description": "AAD Object Id of user to add for Key Vault permissions"
             }
         },
         "splunkEggressIPAddress": {
@@ -174,11 +174,12 @@
             "kind": "web",
             "type": "Microsoft.Insights/components",
             "location": "[parameters('location')]",
+            "tags": {
+                "[concat('hidden-link:', resourceId('Microsoft.Web/sites', parameters('appInsightsName')))]": "Resource"
+            },
             "apiVersion": "2015-05-01",
             "properties": {
-                "ApplicationId": "[parameters('appInsightsName')]",
                 "Application_Type": "web",
-                "Flow_Type": "Redfield",
                 "RetentionInDays": "[variables('appInsightsRetentionDays')]"
             }
         },
@@ -276,32 +277,6 @@
             ]
         },
         {
-            "type": "Microsoft.Web/sites/functions",
-            "apiVersion": "2022-03-01",
-            "name": "[concat(parameters('functionAppName'), '/MessageTrackingLogExtractor')]",
-            "location": "South Central US",
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
-            ],
-            "properties": {
-                "language": "powershell",
-                "isDisabled": true
-            }
-        },
-        {
-            "type": "Microsoft.Web/sites/functions",
-            "apiVersion": "2022-03-01",
-            "name": "[concat(parameters('functionAppName'), '/OrganizationConfigExtractor')]",
-            "location": "South Central US",
-            "dependsOn": [
-                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
-            ],
-            "properties": {
-                "language": "powershell",
-                "isDisabled": false
-            }
-        },
-        {
             "apiVersion": "2018-11-01",
             "name": "[concat(parameters('functionAppName'), '/appsettings')]",
             "type": "Microsoft.Web/sites/config",
@@ -338,7 +313,8 @@
                 "WEBSITE_LOAD_CERTIFICATES": "*",
                 "OrgConfigExportsContainerName": "[variables('orgConfigExportsContainerName')]",
                 "MessageTrackingExportsContainerName": "[variables('messageTrackingExportsContainerName')]",
-                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'AppInsightsConnectionString')).secretUri, ')')]"
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'AppInsightsConnectionString')).secretUri, ')')]",
+                "AzureWebJobs.MessageTrackingLogExtractor.Disabled": "1"
             }
         },
         {
@@ -475,7 +451,7 @@
                         "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
                     ],
                     "properties": {
-                        "value": "[Concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, ';EndpointSuffix=',variables('storageEndPointSuffix'))]"
+                        "value": "[Concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2019-06-01').keys[0].value, ';EndpointSuffix=',variables('storageEndPointSuffix'))]"
                     }
                 }
             ]
@@ -972,7 +948,7 @@
         {
             "type": "Microsoft.Storage/storageAccounts/managementPolicies",
             "apiVersion": "2019-04-01",
-            "name": "default",
+            "name": "[concat(parameters('storageAccountName'), '/default/')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
             ],
