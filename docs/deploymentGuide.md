@@ -13,6 +13,8 @@ To deploy the solution, the following will be needed:
   - Azure Virtual Networks
   - Azure Key Vault
   - Azure Private Link/Private Endpoints
+  - Azure Private DNS zones (for Private Endpoints)
+  - Azure Application Insights
   - Additional services may be required dependent on further extension of the baseline architecture
 - Ability to create an Azure AD (AAD) application registration in the target AAD tenant hosting Exchange Online
   - This AAD application registration will require the __Exchange.ManageAsApp__  permission scope.
@@ -84,7 +86,9 @@ The resource configuration is defined as an ARM template. It will deploy:
   - Including containers for blobs
 - An Azure Virtual Network
 - Various Private Link/Private Endpoint resources to lock down communication between resources
+  - Azure Private DNS zones to support Private Endpoints
 - Secrets within the Azure Key Vault (used for configuration)
+- Azure Application Insights
 - Related configuration (runtime settings, app setting configuration, network integration, etc.) within the Azure Function app.
 
 You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-base.json__ within this repository/package.

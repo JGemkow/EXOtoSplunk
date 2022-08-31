@@ -134,6 +134,19 @@
             "metadata": {
                 "description": "AAD Object Id of user to add for Key Vault permissions",
             }
+        },
+        "splunkEggressIPAddress": {
+            "type": "string",
+            "metadata": {
+                "description": "IP address to be used by the Splunk host to access the Azure Storage account"
+            }
+        },
+        "deploymentEggressIPAddress": {
+            "type": "string",
+            "defaultValue": "[parameters('splunkEggressIPAddress')]",
+            "metadata": {
+                "description": "IP address (in CIDR block notation) to be used by the system performing the deployment to the Azure App Service."
+            }
         }
     },
     "variables": {
@@ -179,7 +192,12 @@
                     "resourceAccessRules": [],
                     "bypass": "None",
                     "virtualNetworkRules": [],
-                    "ipRules": [],
+                    "ipRules": [
+                        {
+                            "value": "[parameters('splunkEggressIPAddress')]",
+                            "action": "Allow"
+                        }
+                    ],
                     "defaultAction": "Deny"
                 }
             }
@@ -371,7 +389,11 @@
                 "networkAcls": {
                     "bypass": "None",
                     "defaultAction": "Deny",
-                    "ipRules": [],
+                    "ipRules": [
+                        {
+                            "value": "[parameters('deploymentEggressIPAddress')]"
+                        }
+                    ],
                     "virtualNetworkRules": []
                 },
                 "enabledForDeployment": false,
@@ -835,6 +857,14 @@
             ],
             "properties": {
                 "ipSecurityRestrictions": [
+                   {
+                        "ipAddress": "[parameters('deploymentEggressIPAddress')]",
+                        "action": "Allow",
+                        "tag": "Default",
+                        "priority": 100,
+                        "name": "Allow deployment agent",
+                        "description": "Allows system performing deployment to access Azure App Service"
+                    },
                     {
                         "ipAddress": "Any",
                         "action": "Deny",
