@@ -150,7 +150,7 @@
         },
         "deploymentEggressIPAddress": {
             "type": "string",
-            "defaultValue": "[parameters('splunkEggressIPAddress')]",
+            "defaultValue": "[concat(parameters('splunkEggressIPAddress'),'/32')]",
             "metadata": {
                 "description": "IP address (in CIDR block notation) to be used by the system performing the deployment to the Azure App Service."
             }
