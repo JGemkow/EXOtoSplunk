@@ -9,6 +9,13 @@
                 "description": "Name used to uniquely identify the instance"
             }
         },
+        "appInsightsName": {
+            "type": "string",
+            "defaultValue": "[concat('appi-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name for Application Insights resource"
+            }
+        },
         "keyVaultName": {
             "defaultValue": "[concat('kv-', parameters('instanceName'))]",
             "type": "string",
@@ -161,6 +168,19 @@
     },
     "resources": [
         {
+            "name": "[parameters('appInsightsName')]",
+            "kind": "web",
+            "type": "Microsoft.Insights/components",
+            "location": "[parameters('location')]",
+            "apiVersion": "2015-05-01",
+            "properties": {
+                "ApplicationId": "[parameters('appInsightsName')]",
+                "Application_Type": "web",
+                "Flow_Type": "Redfield",
+                "RetentionInDays": 90
+            }
+        },
+        {
             "apiVersion": "2018-02-01",
             "name": "[parameters('appServicePlanName')]",
             "type": "Microsoft.Web/serverfarms",
@@ -219,7 +239,8 @@
             "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
-                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+                "[resourceId('microsoft.insights/components/', parameters('appInsightsName'))]"
             ],
             "identity": {
                 "type": "SystemAssigned"
@@ -295,7 +316,8 @@
                 "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', variables('fileStoragePrivateEndpointDNS'), concat(variables('fileStoragePrivateEndpointDNS'), '-link'))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageFileName'))]",
-                "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', parameters('privateEndpointStorageFileName'), 'default')]"
+                "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', parameters('privateEndpointStorageFileName'), 'default')]",
+                "[resourceId('microsoft.insights/components/', parameters('appInsightsName'))]"
             ],
             "properties": {
                 "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')).secretUri, ')')]",
@@ -313,7 +335,8 @@
                 "TenantNameSecretName": "TenantName",
                 "WEBSITE_LOAD_CERTIFICATES": "*",
                 "OrgConfigExportsContainerName": "[variables('orgConfigExportsContainerName')]",
-                "MessageTrackingExportsContainerName": "[variables('messageTrackingExportsContainerName')]"
+                "MessageTrackingExportsContainerName": "[variables('messageTrackingExportsContainerName')]",
+                "APPLICATIONINSIGHTS_CONNECTION_STRING": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'AppInsightsConnectionString')).secretUri, ')')]"
             }
         },
         {
@@ -404,6 +427,19 @@
                 "enablePurgeProtection": true
             },
             "resources": [
+                {
+                    "type": "secrets",
+                    "name": "AppInsightsConnectionString",
+                    "apiVersion": "2016-10-01",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+                        "[resourceId('microsoft.insights/components/', parameters('appInsightsName'))]"
+                    ],
+                    "properties": {
+                        "value": "[reference(resourceId('microsoft.insights/components/', parameters('appInsightsName')), '2015-05-01').ConnectionString]",
+                        "contentType": "text/plain"
+                    }
+                },
                 {
                     "type": "secrets",
                     "name": "ClientId",
