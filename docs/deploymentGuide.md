@@ -1,16 +1,19 @@
 # EXO-to-Splunk Log Ingestion Solution with Azure Automation
 
-This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then execute HTTP requests against Splunk's HTTP Event Collector (HEC) endpoint to ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
+This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then store that exported data to Azure Storage as a blob. From there, a third-party Splunk connector wikk ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
 
 ## Pre-requisites
 
 To deploy the solution, the following will be needed:
 
 - Access to an Azure subscription for deploying Azure Resource Manager resources, including:
-  - Azure Automation accounts
-  - Azure Automation runbooks
+  - Azure App Service Plans
+  - Azure Functions/Azure App Service
+  - Azure Storage
+  - Azure Virtual Networks
   - Azure Key Vault
-  - Additional services may be required depenedent on further extension of the baseline architecture (i.e. VNet integration)
+  - Azure Private Link/Private Endpoints
+  - Additional services may be required dependent on further extension of the baseline architecture
 - Ability to create an Azure AD (AAD) application registration in the target AAD tenant hosting Exchange Online
   - This AAD application registration will require the __Exchange.ManageAsApp__  permission scope.
 - Ability to grant consent for the AAD application registration for the scope specified above (typically a Global Administrator)
@@ -73,11 +76,16 @@ If you do not already have a resource group, create a [resource group](https://d
 
 The resource configuration is defined as an ARM template. It will deploy:
 
-- An Azure Automation account
+- An Azure App service plan (minimum S1 SKU is required for VNet integration)
+- An Azure Function app
+  - Includes two functions (without code)
 - An Azure Key Vault
+- An Azure Storage Account
+  - Including containers for blobs
+- An Azure Virtual Network
+- Various Private Link/Private Endpoint resources to lock down communication between resources
 - Secrets within the Azure Key Vault (used for configuration)
-- Two Azure runbooks on the Automation account
-- Related configuration (schedules, variables, etc.) within the Azure Automation account.
+- Related configuration (runtime settings, app setting configuration, network integration, etc.) within the Azure Function app.
 
 You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-base.json__ within this repository/package.
 
@@ -109,18 +117,13 @@ To do so in the Azure Portal:
 3. Select Certificates & secrets.
 4. Select Certificates > Upload certificate and select the certificate (an existing certificate or the self-signed certificate you exported).
 
-## Deploying the runbook code
+## Deploying the Function code
 
-The runbook resources will be created as empty. The runbook code will need to be added to the resource. The runbook code is stored as PowerShell scripts under the __src__ folder. You can either [edit the runbooks in the Azure Portal](https://docs.microsoft.com/en-us/azure/automation/automation-edit-textual-runbook#edit-a-runbook-with-the-azure-portal) to copy/paste the code into the runbooks from the respective PS1 files, or use [PowerShell](https://docs.microsoft.com/en-us/powershell/module/az.automation/import-azautomationrunbook?view=azps-8.1.0) to import the files against the target resources.
+The Azure Function resources will be created as empty. The function code will need to be added to the resource. The function code is stored under the __src/Function__ folder. There are various ways to deploy the application depending on your workstation configuration, network configuration, and outbound firewall configuration.
 
-### Deploy the remaining Azure resources into your resource group
-
-The resource configuration is defined as an ARM template. It will deploy:
-
-- Related configuration (schedule associations) within the Azure Automation account.
-
-You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-jobschedules.json__ within this repository/package.
+1. ZIP the _contents_ of the __src/Function__ directory. Do not ZIP the Function folder itself.
+2. Deploy the ZIP package using the Kudu UI or another programmatic method described [here](https://docs.microsoft.com/en-us/azure/app-service/deploy-zip?tabs=kudu-ui#deploy-a-zip-package). __Be sure that the [inbound traffic restrictions for your Function app](https://docs.microsoft.com/en-us/azure/azure-functions/functions-networking-options?tabs=azure-cli#inbound-access-restrictions) will allow the upload traffic for the deployment.__
 
 ## Test and validate
 
-The runbooks are now deployed and configured. Monitor the execution of the runbooks on the schedules and ensure data is flowing to Splunk.
+The functions are now deployed and configured. Monitor the execution of the functions on the schedules and ensure data is flowing to Azure Storage for consumption by Splunk.
