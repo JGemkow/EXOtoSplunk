@@ -1,6 +1,6 @@
 # EXO-to-Splunk Log Ingestion Solution with Azure Automation
 
-This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then store that exported data to Azure Storage as a blob. From there, a third-party Splunk connector wikk ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
+This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then store that exported data to Azure Storage as a blob. From there, a third-party Splunk connector will ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
 
 ## Pre-requisites
 
@@ -47,7 +47,7 @@ Using the instructions referenced [here](https://docs.microsoft.com/en-us/azure/
 
 1. From the AAD application registration created above, navigate to _API Permissions_.
 2. Select _Add a permission_.
-3. Under _APIS my organization uses_, search for __Office 365 Exchange Online__.
+3. Under _APIs my organization uses_, search for __Office 365 Exchange Online__.
 4. Select _Application permissions_.
 5. Under _Exchange_, select the __Exchange.ManageAsApp__.
 6. Click __Add permissions__.
@@ -78,7 +78,7 @@ If you do not already have a resource group, create a [resource group](https://d
 
 The resource configuration is defined as an ARM template. It will deploy:
 
-- An Azure App service plan (minimum S1 SKU is required for VNet integration)
+- An Azure App service plan _(minimum S1 SKU is required for VNet integration)_
 - An Azure Function app
 - An Azure Key Vault
 - An Azure Storage Account
@@ -86,9 +86,9 @@ The resource configuration is defined as an ARM template. It will deploy:
 - An Azure Virtual Network
 - Various Private Link/Private Endpoint resources to lock down communication between resources
   - Azure Private DNS zones to support Private Endpoints
-- Secrets within the Azure Key Vault (used for configuration)
+- Secrets within the Azure Key Vault _(used for configuration)_
 - Azure Application Insights
-- Related configuration (runtime settings, app setting configuration, network integration, etc.) within the Azure Function app.
+- Related configuration _(runtime settings, app setting configuration, network integration, etc.)_ within the Azure Function app.
 
 You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-base.json__ within this repository/package.
 

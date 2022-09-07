@@ -285,7 +285,6 @@
                 "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')]",
                 "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
                 "[resourceId('Microsoft.Web/sites/networkConfig', parameters('functionAppName'), 'VirtualNetwork')]",
-                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
                 "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', variables('keyVaultPrivateEndpointDNS'), concat(variables('keyVaultPrivateEndpointDNS'), '-link'))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', variables('keyVaultPrivateEndpointDNS'))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointKeyVaultName'))]",
@@ -294,7 +293,9 @@
                 "[resourceId('Microsoft.Network/privateDnsZones', variables('fileStoragePrivateEndpointDNS'))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpointStorageFileName'))]",
                 "[resourceId('Microsoft.Network/privateEndpoints/privateDnsZoneGroups', parameters('privateEndpointStorageFileName'), 'default')]",
-                "[resourceId('microsoft.insights/components/', parameters('appInsightsName'))]"
+                "[resourceId('microsoft.insights/components/', parameters('appInsightsName'))]",
+                "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'AppInsightsConnectionString')]",
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices/shares', parameters('storageAccountName'), 'default', parameters('functionAppName'))]"
             ],
             "properties": {
                 "AzureWebJobsStorage": "[concat('@Microsoft.KeyVault(SecretUri=', reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), 'StorageAccountConnectionString')).secretUri, ')')]",
@@ -302,6 +303,8 @@
                 "WEBSITE_CONTENTSHARE": "[toLower(parameters('functionAppName'))]",
                 "WEBSITE_CONTENTOVERVNET": "1", // Necessary to allow storage connection from Function App
                 "WEBSITE_VNET_ROUTE_ALL": "1",
+                "WEBSITE_TIME_ZONE": "Eastern Standard Time",
+                "WEBSITE_SKIP_CONTENTSHARE_VALIDATION": "1",
                 "FUNCTIONS_EXTENSION_VERSION": "~3",
                 "FUNCTIONS_WORKER_RUNTIME": "powershell",
                 "CertificateName": "[parameters('certificateName')]",
