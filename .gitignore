@@ -1,0 +1,6 @@
+deploy/template-base.json
+deploy/template.parameters.json
+deploy/template-base.parameters.json
+docs/deploymentGuide.docx
+deploy/template-base.devparameters.json
+deploy/template-base.testparameters.json

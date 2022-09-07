@@ -1,16 +1,21 @@
 # EXO-to-Splunk Log Ingestion Solution with Azure Automation
 
-This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then execute HTTP requests against Splunk's HTTP Event Collector (HEC) endpoint to ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
+This solution can be used for automating the exporting of EXO message traces and EXO tenant level configurations to be ingested into Splunk. This is done by executing a PowerShell script that using the ExchangeOnlineManagement PowerShell module to connect to Exchange Online, perform PowerShell cmdlets to pull data, and then store that exported data to Azure Storage as a blob. From there, a third-party Splunk connector will ingest the data into the appropriate Splunk data index for searching and further monitoring/alerting processes.
 
 ## Pre-requisites
 
 To deploy the solution, the following will be needed:
 
 - Access to an Azure subscription for deploying Azure Resource Manager resources, including:
-  - Azure Automation accounts
-  - Azure Automation runbooks
+  - Azure App Service Plans
+  - Azure Functions/Azure App Service
+  - Azure Storage
+  - Azure Virtual Networks
   - Azure Key Vault
-  - Additional services may be required depenedent on further extension of the baseline architecture (i.e. VNet integration)
+  - Azure Private Link/Private Endpoints
+  - Azure Private DNS zones (for Private Endpoints)
+  - Azure Application Insights
+  - Additional services may be required dependent on further extension of the baseline architecture
 - Ability to create an Azure AD (AAD) application registration in the target AAD tenant hosting Exchange Online
   - This AAD application registration will require the __Exchange.ManageAsApp__  permission scope.
 - Ability to grant consent for the AAD application registration for the scope specified above (typically a Global Administrator)
@@ -42,7 +47,7 @@ Using the instructions referenced [here](https://docs.microsoft.com/en-us/azure/
 
 1. From the AAD application registration created above, navigate to _API Permissions_.
 2. Select _Add a permission_.
-3. Under _APIS my organization uses_, search for __Office 365 Exchange Online__.
+3. Under _APIs my organization uses_, search for __Office 365 Exchange Online__.
 4. Select _Application permissions_.
 5. Under _Exchange_, select the __Exchange.ManageAsApp__.
 6. Click __Add permissions__.
@@ -73,11 +78,17 @@ If you do not already have a resource group, create a [resource group](https://d
 
 The resource configuration is defined as an ARM template. It will deploy:
 
-- An Azure Automation account
+- An Azure App service plan _(minimum S1 SKU is required for VNet integration)_
+- An Azure Function app
 - An Azure Key Vault
-- Secrets within the Azure Key Vault (used for configuration)
-- Two Azure runbooks on the Automation account
-- Related configuration (schedules, variables, etc.) within the Azure Automation account.
+- An Azure Storage Account
+  - Including containers for blobs
+- An Azure Virtual Network
+- Various Private Link/Private Endpoint resources to lock down communication between resources
+  - Azure Private DNS zones to support Private Endpoints
+- Secrets within the Azure Key Vault _(used for configuration)_
+- Azure Application Insights
+- Related configuration _(runtime settings, app setting configuration, network integration, etc.)_ within the Azure Function app.
 
 You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-base.json__ within this repository/package.
 
@@ -109,18 +120,19 @@ To do so in the Azure Portal:
 3. Select Certificates & secrets.
 4. Select Certificates > Upload certificate and select the certificate (an existing certificate or the self-signed certificate you exported).
 
-## Deploying the runbook code
+## Deploying the Function code
 
-The runbook resources will be created as empty. The runbook code will need to be added to the resource. The runbook code is stored as PowerShell scripts under the __src__ folder. You can either [edit the runbooks in the Azure Portal](https://docs.microsoft.com/en-us/azure/automation/automation-edit-textual-runbook#edit-a-runbook-with-the-azure-portal) to copy/paste the code into the runbooks from the respective PS1 files, or use [PowerShell](https://docs.microsoft.com/en-us/powershell/module/az.automation/import-azautomationrunbook?view=azps-8.1.0) to import the files against the target resources.
+The Azure Function resources will be created as empty. The function code will need to be added to the resource. The function code is stored under the __src/Function__ folder. There are various ways to deploy the application depending on your workstation configuration, network configuration, and outbound firewall configuration.
 
-### Deploy the remaining Azure resources into your resource group
-
-The resource configuration is defined as an ARM template. It will deploy:
-
-- Related configuration (schedule associations) within the Azure Automation account.
-
-You can deploy this template using PowerShell, or by [using the Azure Portal](https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/quickstart-create-templates-use-the-portal). The template data is stored in __deploy/template-jobschedules.json__ within this repository/package.
+1. ZIP the _contents_ of the __src/Function__ directory. Do not ZIP the Function folder itself.
+2. Deploy the ZIP package using the Kudu UI or another programmatic method described [here](https://docs.microsoft.com/en-us/azure/app-service/deploy-zip?tabs=kudu-ui#deploy-a-zip-package). __Be sure that the [inbound traffic restrictions for your Function app](https://docs.microsoft.com/en-us/azure/azure-functions/functions-networking-options?tabs=azure-cli#inbound-access-restrictions) will allow the upload traffic for the deployment.__
 
 ## Test and validate
 
-The runbooks are now deployed and configured. Monitor the execution of the runbooks on the schedules and ensure data is flowing to Splunk.
+The functions are now deployed and configured. Monitor the execution of the functions on the schedules and ensure data is flowing to Azure Storage for consumption by Splunk.
+
+__Note:__ By default, a lifecycle policy is put in place on the Storage Account to delete the JSON exports after 7 days. This is to help manage sprawl of exports and minimize costs. Additionally, Application Insights log data is only retained by default for 90 days. These are configurable in the ARM template variables or in the respective resources in the Azure Portal.
+
+Additionally, by default within the template, the Application Insights connection string will be stored in Azure Key Vault. If you want to view the log data generated by the functions directly in the portal within the function blade, you will need to place the connection string directly in the app configuration and reconfigure the Application Insights extension.
+
+Finally, if you choose to test the functions using the Azure Portal, be aware that the inbound access restrictions will block this by default in the template. You will need to disable the access restrictions to allow traffic generated from the service that backs the 'Code + Test' pane within the portal to communicate with the deployed backend function application.
