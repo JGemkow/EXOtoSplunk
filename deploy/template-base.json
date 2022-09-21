@@ -213,7 +213,7 @@
                 "allowBlobPublicAccess": false,
                 "networkAcls": {
                     "resourceAccessRules": [],
-                    "bypass": "None",
+                    "bypass": "AzureServices",
                     "virtualNetworkRules": [],
                     "ipRules": [
                         {
@@ -972,8 +972,8 @@
                                         "blockBlob"
                                     ],
                                     "prefixMatch": [
-                                        "org-config-exports",
-                                        "message-tracking-exports"
+                                        "org-config-exports/EXOOrgConfig_",
+                                        "message-tracking-exports/EXOMessageTrace_"
                                     ]
                                 }
                             },
