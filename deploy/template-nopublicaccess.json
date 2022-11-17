@@ -369,13 +369,7 @@
                                 "Create",
                                 "Import",
                                 "Delete",
-                                "Recover",
-                                "ManageContacts",
-                                "ManageIssuers",
-                                "GetIssuers",
-                                "ListIssuers",
-                                "SetIssuers",
-                                "DeleteIssuers"
+                                "Recover"
                             ]
                         }
                     }
