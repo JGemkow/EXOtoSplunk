@@ -9,6 +9,13 @@
                 "description": "Name used to uniquely identify the instance"
             }
         },
+        "networkSecurityGroupName": {
+            "type": "string",
+            "defaultValue": "[concat('nsg-', parameters('instanceName'))]",
+            "metadata": {
+                "description": "Name for Network Security Group resource"
+            }
+        },
         "appInsightsName": {
             "type": "string",
             "defaultValue": "[concat('appi-', parameters('instanceName'))]",
@@ -460,10 +467,22 @@
             ]
         },
         {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('networkSecurityGroupName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": []
+            }
+        },
+        {
             "type": "Microsoft.Network/virtualNetworks",
             "apiVersion": "2020-11-01",
             "name": "[parameters('virtualNetworkName')]",
             "location": "[parameters('location')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupName'))]"
+            ],
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
@@ -476,6 +495,9 @@
                         "name": "[parameters('appServiceSubnetName')]",
                         "properties": {
                             "addressPrefix": "10.80.16.0/28",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupName'))]"
+                            },
                             "serviceEndpoints": [],
                             "delegations": [
                                 {
@@ -493,6 +515,9 @@
                         "name": "[parameters('defaultSubnetName')]",
                         "properties": {
                             "addressPrefix": "10.80.0.0/28",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupName'))]"
+                            },
                             "serviceEndpoints": [],
                             "delegations": [],
                             "privateEndpointNetworkPolicies": "Disabled",
