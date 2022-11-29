@@ -193,7 +193,7 @@
         {
             "name": "[parameters('storageAccountName')]",
             "type": "Microsoft.Storage/storageAccounts",
-            "apiVersion": "2019-06-01",
+            "apiVersion": "2022-09-01",
             "tags": {
                 "displayName": "[parameters('storageAccountName')]"
             },
@@ -312,7 +312,7 @@
         },
         {
             "type": "Microsoft.KeyVault/vaults",
-            "apiVersion": "2016-10-01",
+            "apiVersion": "2022-07-01",
             "name": "[parameters('keyVaultName')]",
             "location": "[parameters('location')]",
             "dependsOn": [
@@ -873,6 +873,13 @@
             ],
             "properties": {
                 "ipSecurityRestrictions": [
+                    {
+                        "ipAddress": "0.0.0.0/0",
+                        "action": "Deny",
+                        "priority": 2147483647,
+                        "name": "Deny all",
+                        "description": "Deny all access"
+                    },
                     {
                         "ipAddress": "Any",
                         "action": "Deny",
